@@ -1,0 +1,37 @@
+'use strict';
+document.documentElement.classList.add('js');
+const reduced=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const loader=document.querySelector('.loader');
+const driftVideo=document.querySelector('#drift-video');
+let frame,loaderStarted=false,loaderTimeout;
+function finishLoader(){cancelAnimationFrame(frame);loader.classList.add('done');document.body.classList.remove('loading');driftVideo.pause()}
+function startLoader(){
+ if(loaderStarted)return;loaderStarted=true;
+ const started=performance.now();loader.classList.add('running');
+ function progress(now){const percent=Math.min(100,Math.round((now-started)/30));document.querySelector('.load-num').textContent=String(percent).padStart(2,'0');if(percent<100)frame=requestAnimationFrame(progress)}
+ driftVideo.currentTime=0;driftVideo.play().catch(()=>{});
+ frame=requestAnimationFrame(progress);loaderTimeout=setTimeout(finishLoader,3000);
+}
+if(reduced){finishLoader()}else{
+ document.body.classList.add('loading');
+ if(driftVideo.readyState>=2)startLoader();else driftVideo.addEventListener('loadeddata',startLoader,{once:true});
+ driftVideo.addEventListener('error',startLoader,{once:true});
+ setTimeout(startLoader,1200);
+}
+const waLink=(message)=>'https://wa.me/919101035255?text='+encodeURIComponent(message);
+document.querySelectorAll('a.wa').forEach(a=>{a.href=waLink(a.dataset.message);a.target='_blank';a.rel='noopener noreferrer'});
+const menu=document.querySelector('.menu'),nav=document.querySelector('#nav');menu.addEventListener('click',()=>{const open=nav.classList.toggle('open');menu.setAttribute('aria-expanded',String(open));menu.setAttribute('aria-label',open?'Close navigation':'Open navigation')});nav.querySelectorAll('a').forEach(a=>a.addEventListener('click',()=>{nav.classList.remove('open');menu.setAttribute('aria-expanded','false')}));document.addEventListener('keydown',e=>{if(e.key==='Escape'){nav.classList.remove('open');menu.setAttribute('aria-expanded','false')}});
+const header=document.querySelector('.header');let ticking=false;
+function onScroll(){header.classList.toggle('stuck',scrollY>100);const max=document.documentElement.scrollHeight-innerHeight;document.querySelector('.scroll-progress').style.width=(max?scrollY/max*100:0)+'%';ticking=false}
+addEventListener('scroll',()=>{if(!ticking){ticking=true;requestAnimationFrame(onScroll)}},{passive:true});onScroll();
+const observer=new IntersectionObserver(items=>items.forEach(item=>{if(item.isIntersecting){item.target.classList.add('shown');observer.unobserve(item.target)}}),{threshold:.08});document.querySelectorAll('.reveal').forEach(el=>observer.observe(el));
+const comparison=document.querySelector('.comparison');document.querySelector('#compare').addEventListener('input',e=>comparison.style.setProperty('--split',e.target.value+'%'));
+const captions=['A finish that catches the light','The foam wash, done with care','Protection begins with preparation','Bringing the depth back to paint','Every edge deserves attention','A cleaner cabin. A calmer drive.','Small tools. Big attention.','The first step to a fresh start','The craft behind the gloss','Care in every pass'];
+const stage=document.querySelector('#carousel-stage'),dots=document.querySelector('.gallery-dots');let index=0;
+for(let i=0;i<10;i++){const card=document.createElement('div');card.className='gallery-card';card.innerHTML=`<img src="assets/gallery-${String(i+1).padStart(2,'0')}.jpg" loading="eager" decoding="async" width="1600" height="1000" alt="${captions[i]}"><span>${String(i+1).padStart(2,'0')} / TORQUE EDIT</span>`;const photo=card.querySelector('img');photo.addEventListener('error',()=>{if(!photo.dataset.fallback){photo.dataset.fallback='1';photo.src='assets/after.jpg';photo.alt='Glossy detailed SUV in the studio'}});stage.append(card);const dot=document.createElement('button');dot.setAttribute('aria-label',`Show photo ${i+1}: ${captions[i]}`);dot.addEventListener('click',()=>{index=i;renderGallery()});dots.append(dot)}
+function renderGallery(){[...stage.children].forEach((card,i)=>{let offset=(i-index+10)%10;if(offset>5)offset-=10;const abs=Math.abs(offset);card.style.transform=`translateX(${offset*66}%) translateZ(${-abs*170}px) rotateY(${offset*-25}deg) scale(${abs===0?1:.94})`;card.style.opacity=abs>2?'0':abs===0?'1':abs===1?'.7':'.28';card.style.zIndex=String(10-abs);card.setAttribute('aria-hidden',String(abs!==0))});[...dots.children].forEach((d,i)=>{d.classList.toggle('active',i===index);d.setAttribute('aria-pressed',String(i===index))});document.querySelector('#gallery-num').textContent=String(index+1).padStart(2,'0');document.querySelector('#gallery-caption').textContent=captions[index]}
+function move(n){index=(index+n+10)%10;renderGallery()}document.querySelector('#previous').addEventListener('click',()=>move(-1));document.querySelector('#next').addEventListener('click',()=>move(1));const carousel=document.querySelector('.carousel');carousel.addEventListener('keydown',e=>{if(e.key==='ArrowRight'){e.preventDefault();move(1)}if(e.key==='ArrowLeft'){e.preventDefault();move(-1)}});let touchX=0,touchY=0;carousel.addEventListener('touchstart',e=>{touchX=e.changedTouches[0].clientX;touchY=e.changedTouches[0].clientY},{passive:true});carousel.addEventListener('touchend',e=>{const dx=e.changedTouches[0].clientX-touchX,dy=e.changedTouches[0].clientY-touchY;if(Math.abs(dx)>45&&Math.abs(dx)>Math.abs(dy))move(dx<0?1:-1)},{passive:true});renderGallery();
+document.querySelectorAll('.price-tabs button').forEach(btn=>btn.addEventListener('click',()=>{document.querySelectorAll('.price-tabs button').forEach(b=>{b.classList.toggle('active',b===btn);b.setAttribute('aria-pressed',String(b===btn))});document.querySelectorAll('[data-prices]').forEach(p=>p.textContent='₹'+Number(p.dataset.prices.split(',')[Number(btn.dataset.size)]).toLocaleString('en-IN'))}));
+const form=document.querySelector('#enquiry');const dateInput=form.elements.date;const localDate=new Date();localDate.setMinutes(localDate.getMinutes()-localDate.getTimezoneOffset());dateInput.min=localDate.toISOString().slice(0,10);form.addEventListener('submit',e=>{e.preventDefault();if(!form.reportValidity())return;const f=new FormData(form);const message=`Hi TORQUE, I'd like to enquire about car care.\n\nName: ${String(f.get('name')).trim()}\nCar: ${String(f.get('car')).trim()}\nService: ${f.get('service')}\nPreferred date: ${f.get('date')||'Please suggest availability'}\nNotes: ${String(f.get('message')).trim()||'None'}\n\nPlease confirm the quote and availability.`;window.open(waLink(message),'_blank','noopener,noreferrer')});
+const privacy=document.querySelector('#privacy');document.querySelector('#privacy-open').addEventListener('click',()=>privacy.showModal());document.querySelector('#privacy-close').addEventListener('click',()=>privacy.close());privacy.addEventListener('click',e=>{if(e.target===privacy){const r=privacy.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)privacy.close()}});document.querySelector('#year').textContent=new Date().getFullYear();
+const video=document.querySelector('#hero-video');if(!reduced){video.play().catch(()=>{});const videoObserver=new IntersectionObserver(entries=>{entries.forEach(entry=>{if(entry.isIntersecting&&!document.hidden)video.play().catch(()=>{});else video.pause()})},{threshold:.05});videoObserver.observe(video);document.addEventListener('visibilitychange',()=>{if(document.hidden)video.pause();else if(scrollY<innerHeight)video.play().catch(()=>{})})}
